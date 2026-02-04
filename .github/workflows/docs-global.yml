@@ -1,0 +1,105 @@
+name: docs-global
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        required: true
+        type: string
+      ref_name:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docs-build-${{ inputs.repo }}-${{ inputs.ref_name }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout docs repo at triggering branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.ref_name }}
+          fetch-depth: 0
+
+      - name: Verify SHA exists on that branch
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ inputs.ref_name }}" --depth=50
+          git cat-file -e "${{ inputs.sha }}^{commit}"
+
+      - name: Run canonical build (tooling repo script)
+        env:
+          GITHUB_REF_NAME: ${{ inputs.ref_name }}
+          GITHUB_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/tooling
+          cp -a "${GITHUB_ACTION_PATH}/../scripts" /tmp/tooling/
+          chmod +x /tmp/tooling/scripts/updatePages.sh
+
+          /tmp/tooling/scripts/updatePages.sh build-only
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-${{ inputs.ref_name }}-${{ inputs.sha }}
+          path: _build/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docs-deploy-${{ inputs.repo }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout docs repo (for git metadata + gh-pages push target)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.ref_name }}
+          fetch-depth: 0
+
+      - name: Skip deploy if stale (branch advanced)
+        run: |
+          set -euo pipefail
+          BRANCH="${{ inputs.ref_name }}"
+          SHA="${{ inputs.sha }}"
+
+          git fetch origin "${BRANCH}" --depth=1
+          LATEST_SHA="$(git rev-parse FETCH_HEAD)"
+
+          if [[ "${LATEST_SHA}" != "${SHA}" ]]; then
+            echo "INFO: Skipping deploy. Run SHA=${SHA}, but ${BRANCH} is now at ${LATEST_SHA}."
+            exit 0
+          fi
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: html-${{ inputs.ref_name }}-${{ inputs.sha }}
+          path: _build/html
+
+      - name: Run canonical deploy (tooling repo script)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ inputs.ref_name }}
+          GITHUB_SHA: ${{ inputs.sha }}
+          GITHUB_REPOSITORY: ${{ inputs.repo }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/tooling
+          cp -a "${GITHUB_ACTION_PATH}/../scripts" /tmp/tooling/
+          chmod +x /tmp/tooling/scripts/updatePages.sh
+
+          /tmp/tooling/scripts/updatePages.sh deploy-only
