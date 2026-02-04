@@ -1,0 +1,30 @@
+name: "Netris Docs Tooling"
+description: "Build and deploy Netris Sphinx docs to gh-pages"
+
+inputs:
+  mode:
+    description: "build-only or deploy-only"
+    required: true
+  repo:
+    description: "Owner/repo of docs repository (e.g. netrisai/docs)"
+    required: true
+  ref_name:
+    description: "Branch name that triggered the run"
+    required: true
+  sha:
+    description: "Commit SHA that triggered the run"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run docs tooling script
+      shell: bash
+      env:
+        GITHUB_REF_NAME: ${{ inputs.ref_name }}
+        GITHUB_SHA: ${{ inputs.sha }}
+        GITHUB_REPOSITORY: ${{ inputs.repo }}
+      run: |
+        set -euo pipefail
+        chmod +x "${GITHUB_ACTION_PATH}/scripts/updatePages.sh"
+        "${GITHUB_ACTION_PATH}/scripts/updatePages.sh" "${{ inputs.mode }}"
