@@ -7,7 +7,7 @@ export LC_ALL=C.UTF-8
 
 MODE="${1:-}"
 BRANCH="${GITHUB_REF_NAME}"
-LANG="en"
+DOC_LANG="en"
 
 install_deps() {
   sudo apt-get update
@@ -46,7 +46,7 @@ build_only() {
   fi
 
   # Build branch-scoped HTML output
-  sphinx-build -b html . "_build/html/${LANG}/${BRANCH}" -D language="${LANG}"
+  sphinx-build -b html . "_build/html/${DOC_LANG}/${BRANCH}" -D language="${DOC_LANG}"
 }
 
 deploy_only() {
@@ -58,12 +58,12 @@ deploy_only() {
 
   touch "${pages_dir}/.nojekyll"
 
-  mkdir -p "${pages_dir}/${LANG}/${BRANCH}"
-  rsync -a --delete "_build/html/${LANG}/${BRANCH}/" "${pages_dir}/${LANG}/${BRANCH}/"
+  mkdir -p "${pages_dir}/${DOC_LANG}/${BRANCH}"
+  rsync -a --delete "_build/html/${DOC_LANG}/${BRANCH}/" "${pages_dir}/${DOC_LANG}/${BRANCH}/"
 
   if [[ -n "${latest_branch}" && "${BRANCH}" == "${latest_branch}" ]]; then
-    mkdir -p "${pages_dir}/${LANG}/latest"
-    rsync -a --delete "_build/html/${LANG}/${BRANCH}/" "${pages_dir}/${LANG}/latest/"
+    mkdir -p "${pages_dir}/${DOC_LANG}/latest"
+    rsync -a --delete "_build/html/${DOC_LANG}/${BRANCH}/" "${pages_dir}/${DOC_LANG}/latest/"
   fi
 
   pushd "${pages_dir}"
