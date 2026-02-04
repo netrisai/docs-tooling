@@ -2,6 +2,9 @@
 set -euo pipefail
 set -x
 
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
 MODE="${1:-}"
 BRANCH="${GITHUB_REF_NAME}"
 LANG="en"
