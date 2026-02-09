@@ -1,5 +1,1 @@
-# docs-tooling
-<<<<<<< HEAD
-=======
-# docs-tooling
->>>>>>> 03e3b89 (first commit)
+This is a tooling repo called from netris.ai/docs repo to build RST into HTML

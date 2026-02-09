@@ -3,7 +3,7 @@ description: "Build and deploy Netris Sphinx docs to gh-pages"
 
 inputs:
   mode:
-    description: "build-only or deploy-only"
+    description: "build-only, deploy-only, or cleanup-only"
     required: true
   repo:
     description: "Owner/repo of docs repository (e.g. netrisai/docs)"
