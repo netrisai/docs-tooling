@@ -27,9 +27,17 @@ install_deps() {
 }
 
 # Return all remote branch names we consider "published"
+# IMPORTANT: do NOT rely on locally-fetched refs in CI (often shallow/single-branch).
 active_branches() {
-  git fetch --all --prune
-  git for-each-ref '--format=%(refname:lstrip=-1)' refs/remotes/origin/ | grep -viE '^(HEAD|gh-pages)$' || true
+  # origin must exist (actions/checkout sets it)
+  git remote get-url origin >/dev/null 2>&1 || { echo "ERROR: remote 'origin' not found"; exit 1; }
+
+  # List remote heads, strip refs/heads/, filter out gh-pages + HEAD
+  git ls-remote --heads origin \
+    | awk '{print $2}' \
+    | sed -E 's#^refs/heads/##' \
+    | grep -viE '^(HEAD|gh-pages)$' \
+    || true
 }
 
 latest_semver_branch() {
@@ -69,6 +77,7 @@ cleanup_gh_pages() {
   fi
 
   # Keep latest alias correct (best effort)
+  # If latest_branch exists in gh-pages, mirror it into /latest.
   if [[ -n "${latest_branch}" && -d "${pages_dir}/${DOC_LANG}/${latest_branch}" ]]; then
     echo "INFO: Refreshing alias ${DOC_LANG}/latest from ${latest_branch}"
     mkdir -p "${pages_dir}/${DOC_LANG}/latest"
@@ -103,7 +112,7 @@ deploy_only() {
 
   touch "${pages_dir}/.nojekyll"
 
-  # Copy only this branch subtree
+  # Copy only this branch subtree (safe to use --delete because it's scoped)
   mkdir -p "${pages_dir}/${DOC_LANG}/${BRANCH}"
   rsync -a --delete "_build/html/${DOC_LANG}/${BRANCH}/" "${pages_dir}/${DOC_LANG}/${BRANCH}/"
 
@@ -113,7 +122,7 @@ deploy_only() {
     rsync -a --delete "_build/html/${DOC_LANG}/${BRANCH}/" "${pages_dir}/${DOC_LANG}/latest/"
   fi
 
-  # Always cleanup stale branches (and best-effort fix latest alias)
+  # Enforce rule: keep dirs for existing branches; delete dirs for non-existent branches
   cleanup_gh_pages "${pages_dir}" "${latest_branch}"
 
   pushd "${pages_dir}"
