@@ -57,6 +57,18 @@ cleanup_gh_pages() {
     [[ -n "$b" ]] && alive["$b"]=1
   done < <(active_branches)
 
+  echo "DEBUG: active_branches returned ${#alive[@]} branches:"
+  for k in "${!alive[@]}"; do
+    echo "  - $k"
+  done | sort
+
+  # Safety: if branch discovery fails, do NOT delete anything.
+  # Tune the threshold if needed, but 1 is already safer than “oops, nuked everything”.
+  if [[ "${#alive[@]}" -lt 1 ]]; then
+    echo "ERROR: active_branches returned 0 branches; refusing to delete anything from gh-pages."
+    return 1
+  fi
+
   # Remove stale branch directories (keep 'latest')
   if [[ -d "${pages_dir}/${DOC_LANG}" ]]; then
     for d in "${pages_dir}/${DOC_LANG}"/*; do
