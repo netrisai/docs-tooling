@@ -41,7 +41,7 @@ active_branches() {
 }
 
 latest_semver_branch() {
-  versions="$(active_branches | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V || true)"
+  versions="$(active_branches | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | sort -V || true)"
   echo "$versions" | tail -n 1 || true
 }
 
@@ -168,6 +168,7 @@ deploy_only() {
 
   REPO_URL="https://token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
   latest_branch="$(latest_semver_branch)"
+  echo "INFO: latest resolves to ${latest_branch}"
 
   pages_dir="$(mktemp -d)"
   git clone --branch gh-pages --depth 1 "${REPO_URL}" "${pages_dir}"
