@@ -112,6 +112,56 @@ build_only() {
   sphinx-build -b html . "_build/html/${DOC_LANG}/${BRANCH}" -D language="${DOC_LANG}"
 }
 
+write_versions_json() {
+  local pages_dir="$1"
+  local lang="$2"
+
+  # IMPORTANT:
+  # Your public URLs are /docs/en/<version>/...
+  # So this manifest should be served at /docs/versions.json
+  # Which corresponds to gh-pages repo root: ${pages_dir}/versions.json
+  local out="${pages_dir}/versions.json"
+
+  python3 - <<'PY' "${pages_dir}" "${lang}" "${out}"
+import json, os, re, sys
+
+pages_dir, lang, out = sys.argv[1], sys.argv[2], sys.argv[3]
+
+lang_dir = os.path.join(pages_dir, lang)
+if not os.path.isdir(lang_dir):
+    # Nothing to publish yet; write empty but valid JSON.
+    with open(out, "w") as f:
+        json.dump({"versions": []}, f)
+    sys.exit(0)
+
+# Collect version directories like 2.9, 3.0, 4.5, 4.5.3 (whatever you use)
+semver_re = re.compile(r"^\d+\.\d+(\.\d+)?$")
+entries = []
+for name in os.listdir(lang_dir):
+    p = os.path.join(lang_dir, name)
+    if not os.path.isdir(p):
+        continue
+    if semver_re.match(name):
+        entries.append(name)
+
+# Sort semver-ish using tuple numeric ordering
+def ver_key(v):
+    return tuple(int(x) for x in v.split("."))
+
+entries.sort(key=ver_key)
+
+versions = [{"version": v, "url": f"/docs/{lang}/{v}/"} for v in entries]
+
+# Add "latest" if it exists
+if os.path.isdir(os.path.join(lang_dir, "latest")):
+    versions.append({"version": "latest", "url": f"/docs/{lang}/latest/"})
+
+os.makedirs(os.path.dirname(out), exist_ok=True)
+with open(out, "w") as f:
+    json.dump({"versions": versions}, f, indent=2)
+PY
+}
+
 deploy_only() {
   : "${GITHUB_TOKEN:?GITHUB_TOKEN is required for deploy-only}"
   : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required for deploy-only}"
@@ -136,6 +186,9 @@ deploy_only() {
 
   # Enforce rule: keep dirs for existing branches; delete dirs for non-existent branches
   cleanup_gh_pages "${pages_dir}" "${latest_branch}"
+
+  # NEW: regenerate the global version manifest on every deploy
+  write_versions_json "${pages_dir}" "${DOC_LANG}"
 
   pushd "${pages_dir}"
   git config user.name "${GITHUB_ACTOR}"
