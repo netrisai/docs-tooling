@@ -150,11 +150,11 @@ def ver_key(v):
 
 entries.sort(key=ver_key)
 
-versions = [{"version": v, "url": f"/docs/{lang}/{v}/"} for v in entries]
+versions = [{"id": v, "title": v, "url": f"/docs/{lang}/{v}/"} for v in entries]
 
 # Add "latest" if it exists
 if os.path.isdir(os.path.join(lang_dir, "latest")):
-    versions.append({"version": "latest", "url": f"/docs/{lang}/latest/"})
+    versions.append({"id": "latest", "title": "latest", "url": f"/docs/{lang}/latest/"})
 
 os.makedirs(os.path.dirname(out), exist_ok=True)
 with open(out, "w") as f:
