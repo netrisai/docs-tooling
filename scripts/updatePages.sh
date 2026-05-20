@@ -22,7 +22,8 @@ install_deps() {
     sphinx-copybutton \
     sphinx_design \
     sphinx-tabs \
-    sphinxcontrib.googleanalytics
+    sphinxcontrib.googleanalytics \
+    sphinx-collapse
   git config --global --add safe.directory '*'
 }
 
